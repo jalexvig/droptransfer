@@ -20,7 +20,9 @@ from estimators import ValueEstimator, PolicyEstimator
 from policy_monitor import PolicyMonitor
 from worker import Worker
 
-tf.flags.DEFINE_string("model_dir", "/tmp/a3c", "Directory to write Tensorboard summaries and videos to.")
+dpath_model_default = os.path.join(import_path, 'saved')
+
+tf.flags.DEFINE_string("model_dir", dpath_model_default, "Directory to write Tensorboard summaries and videos to.")
 tf.flags.DEFINE_string("env", "Breakout-v0", "Name of gym Atari environment, e.g. Breakout-v0")
 tf.flags.DEFINE_integer("t_max", 5, "Number of steps before performing an update")
 tf.flags.DEFINE_integer("max_global_steps", None,
@@ -28,6 +30,9 @@ tf.flags.DEFINE_integer("max_global_steps", None,
 tf.flags.DEFINE_integer("eval_every", 300, "Evaluate the policy every N seconds")
 tf.flags.DEFINE_boolean("reset", False, "If set, delete the existing model directory and start training from scratch.")
 tf.flags.DEFINE_integer("parallelism", None, "Number of threads to run. If not set we run [num_cpu_cores] threads.")
+tf.flags.DEFINE_float("keep_prob", 1, "Probability to keep elements in dropout layers.")
+tf.flags.DEFINE_string("run_name", "default", "Name of run.")
+tf.flags.DEFINE_string("initialize_from", None, "Directory to initialize model from.")
 
 FLAGS = tf.flags.FLAGS
 FLAGS(sys.argv)
@@ -51,11 +56,11 @@ else:
 env_.close()
 
 # Set the number of workers
-NUM_WORKERS = multiprocessing.cpu_count()
-if FLAGS.parallelism:
-    NUM_WORKERS = FLAGS.parallelism
+NUM_WORKERS = FLAGS.parallelism if FLAGS.parallelism else multiprocessing.cpu_count()
 
 MODEL_DIR = FLAGS.model_dir
+run_name = '_'.join([FLAGS.run_name, FLAGS.env, str(FLAGS.keep_prob)])
+MODEL_DIR = os.path.join(MODEL_DIR, run_name)
 CHECKPOINT_DIR = os.path.join(MODEL_DIR, "checkpoints")
 
 # Optionally empty model directory
@@ -87,9 +92,7 @@ with tf.device("/cpu:0"):
         # We only write summaries in one of the workers because they're
         # pretty much identical and writing them on all workers
         # would be a waste of space
-        worker_summary_writer = None
-        if worker_id == 0:
-            worker_summary_writer = summary_writer
+        worker_summary_writer = summary_writer if worker_id == 0 else None
 
         worker = Worker(
             name="worker_{}".format(worker_id),
@@ -117,7 +120,7 @@ with tf.Session() as sess:
     coord = tf.train.Coordinator()
 
     # Load a previous checkpoint if it exists
-    latest_checkpoint = tf.train.latest_checkpoint(CHECKPOINT_DIR)
+    latest_checkpoint = tf.train.latest_checkpoint(FLAGS.initialize_from or CHECKPOINT_DIR)
     if latest_checkpoint:
         print("Loading model checkpoint: {}".format(latest_checkpoint))
         saver.restore(sess, latest_checkpoint)
