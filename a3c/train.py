@@ -74,7 +74,7 @@ with tf.device("/cpu:0"):
     # Global policy and value nets that share first part of network
     with tf.variable_scope("global") as vs:
         policy_net = PolicyEstimator(num_outputs=len(VALID_ACTIONS))
-        value_net = ValueEstimator(reuse=True)
+        value_net = ValueEstimator()
 
     # Note this is okay in CPython since it's thread safe
     # https://www.reddit.com/r/Python/comments/52mlee/a_threadsafe_incrementing_counter_very_simple_but/
