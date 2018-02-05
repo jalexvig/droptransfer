@@ -13,20 +13,23 @@ from a3c.estimators import ValueEstimator, PolicyEstimator
 from a3c.policy_monitor import PolicyMonitor
 from a3c.worker import Worker
 
-tf.flags.DEFINE_string("model_dir", './saved', "Directory to write Tensorboard summaries and videos to.")
-tf.flags.DEFINE_string("env", "Breakout-v0", "Name of gym Atari environment, e.g. Breakout-v0")
-tf.flags.DEFINE_integer("t_max", 5, "Number of steps before performing an update")
-tf.flags.DEFINE_integer("max_global_steps", None,
-                        "Stop training after this many steps in the environment. Defaults to running indefinitely.")
-tf.flags.DEFINE_integer("eval_every", 300, "Evaluate the policy every N seconds")
-tf.flags.DEFINE_boolean("reset", False, "If set, delete the existing model directory and start training from scratch.")
-tf.flags.DEFINE_integer("parallelism", None, "Number of threads to run. If not set we run [num_cpu_cores] threads.")
-tf.flags.DEFINE_float("keep_prob", 1, "Probability to keep elements in dropout layers.")
-tf.flags.DEFINE_string("run_name", "default", "Name of run.")
-tf.flags.DEFINE_string("initialize_from", None, "Directory to initialize model from.")
-
 FLAGS = tf.flags.FLAGS
-FLAGS(sys.argv)
+
+
+def setup_flags():
+    tf.flags.DEFINE_string("model_dir", './saved', "Directory to write Tensorboard summaries and videos to.")
+    tf.flags.DEFINE_string("env", "Breakout-v0", "Name of gym Atari environment, e.g. Breakout-v0")
+    tf.flags.DEFINE_integer("t_max", 5, "Number of steps before performing an update")
+    tf.flags.DEFINE_integer("max_global_steps", None,
+                            "Stop training after this many steps in the environment. Defaults to running indefinitely.")
+    tf.flags.DEFINE_integer("eval_every", 300, "Evaluate the policy every N seconds")
+    tf.flags.DEFINE_boolean("reset", False, "If set, delete the existing model directory and start training from scratch.")
+    tf.flags.DEFINE_integer("parallelism", None, "Number of threads to run. If not set we run [num_cpu_cores] threads.")
+    tf.flags.DEFINE_float("keep_prob", 1, "Probability to keep elements in dropout layers.")
+    tf.flags.DEFINE_string("run_name", "default", "Name of run.")
+    tf.flags.DEFINE_string("init_from", None, "Directory to initialize model from.")
+
+    FLAGS(sys.argv)
 
 
 def make_env(wrap=True):
@@ -38,26 +41,43 @@ def make_env(wrap=True):
     return env
 
 
-# Depending on the game we may have a limited action space
-env_ = make_env()
-if FLAGS.env == "Pong-v0" or FLAGS.env == "Breakout-v0":
-    VALID_ACTIONS = list(range(4))
-else:
-    VALID_ACTIONS = list(range(env_.action_space.n))
-env_.close()
+def proc_flags():
 
-# Set the number of workers
-NUM_WORKERS = FLAGS.parallelism if FLAGS.parallelism else multiprocessing.cpu_count()
+    # Depending on the game we may have a limited action space
+    env_ = make_env()
+    if FLAGS.env == "Pong-v0" or FLAGS.env == "Breakout-v0":
+        VALID_ACTIONS = list(range(4))
+    else:
+        VALID_ACTIONS = list(range(env_.action_space.n))
+    env_.close()
 
-MODEL_DIR = os.path.join(FLAGS.model_dir, '_'.join([FLAGS.run_name, FLAGS.env, str(FLAGS.keep_prob)]))
-CHECKPOINT_DIR = os.path.join(MODEL_DIR, "checkpoints")
+    # Set the number of workers
+    NUM_WORKERS = FLAGS.parallelism if FLAGS.parallelism else multiprocessing.cpu_count()
 
-# Optionally empty model directory
-if FLAGS.reset:
-    shutil.rmtree(MODEL_DIR, ignore_errors=True)
+    run_name_components = [FLAGS.run_name,
+                           FLAGS.env,
+                           str(FLAGS.max_global_steps),
+                           str(bool(FLAGS.init_from)),
+                           str(FLAGS.keep_prob)]
+    MODEL_DIR = os.path.join(FLAGS.model_dir, '_'.join(run_name_components))
+    CHECKPOINT_DIR = os.path.join(MODEL_DIR, "checkpoints")
 
-if not os.path.exists(CHECKPOINT_DIR):
-    os.makedirs(CHECKPOINT_DIR)
+    # Optionally empty model directory
+    if FLAGS.reset:
+        shutil.rmtree(MODEL_DIR, ignore_errors=True)
+
+    if not os.path.exists(CHECKPOINT_DIR):
+        os.makedirs(CHECKPOINT_DIR)
+
+    if FLAGS.init_from:
+        with open(os.path.join(MODEL_DIR, 'init_from.txt'), 'w') as f:
+            f.write(FLAGS.init_from)
+
+    return VALID_ACTIONS, NUM_WORKERS, MODEL_DIR, CHECKPOINT_DIR
+
+
+setup_flags()
+VALID_ACTIONS, NUM_WORKERS, MODEL_DIR, CHECKPOINT_DIR = proc_flags()
 
 summary_writer = tf.summary.FileWriter(os.path.join(MODEL_DIR, "train"))
 
@@ -109,7 +129,7 @@ with tf.Session() as sess:
     coord = tf.train.Coordinator()
 
     # Load a previous checkpoint if it exists
-    latest_checkpoint = tf.train.latest_checkpoint(FLAGS.initialize_from or CHECKPOINT_DIR)
+    latest_checkpoint = tf.train.latest_checkpoint(FLAGS.init_from or CHECKPOINT_DIR)
     if latest_checkpoint:
         print("Loading model checkpoint: {}".format(latest_checkpoint))
         saver.restore(sess, latest_checkpoint)
