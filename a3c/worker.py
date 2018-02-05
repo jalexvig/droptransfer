@@ -1,23 +1,11 @@
-import gym
-import sys
-import os
-import itertools
 import collections
+import itertools
+
 import numpy as np
 import tensorflow as tf
 
-from inspect import getsourcefile
-
-current_path = os.path.dirname(os.path.abspath(getsourcefile(lambda: 0)))
-import_path = os.path.abspath(os.path.join(current_path, "../.."))
-
-if import_path not in sys.path:
-    sys.path.append(import_path)
-
-# from lib import plotting
-from lib.atari.state_processor import StateProcessor
-from lib.atari import helpers as atari_helpers
-from estimators import ValueEstimator, PolicyEstimator
+from a3c import utils
+from a3c.estimators import ValueEstimator, PolicyEstimator
 
 Transition = collections.namedtuple("Transition", ["state", "action", "reward", "next_state", "done"])
 
@@ -77,7 +65,6 @@ class Worker(object):
         self.global_value_net = value_net
         self.global_counter = global_counter
         self.local_counter = itertools.count()
-        self.sp = StateProcessor()
         self.summary_writer = summary_writer
         self.env = env
 
@@ -99,7 +86,7 @@ class Worker(object):
     def run(self, sess, coord, t_max):
         with sess.as_default(), sess.graph.as_default():
             # Initial state
-            self.state = atari_helpers.atari_make_initial_state(self.sp.process(self.env.reset()))
+            self.state = utils.atari_make_initial_state(utils.process_state(self.env.reset()))
             try:
                 while not coord.should_stop():
                     # Copy Parameters from the global networks
@@ -136,7 +123,7 @@ class Worker(object):
             action_probs = self._policy_net_predict(self.state, sess)
             action = np.random.choice(np.arange(len(action_probs)), p=action_probs)
             next_state, reward, done, _ = self.env.step(action)
-            next_state = atari_helpers.atari_make_next_state(self.state, self.sp.process(next_state))
+            next_state = utils.atari_make_next_state(self.state, utils.process_state(next_state))
 
             # Store transition
             transitions.append(Transition(
@@ -150,7 +137,7 @@ class Worker(object):
                 tf.logging.info("{}: local Step {}, global step {}".format(self.name, local_t, global_t))
 
             if done:
-                self.state = atari_helpers.atari_make_initial_state(self.sp.process(self.env.reset()))
+                self.state = utils.atari_make_initial_state(utils.process_state(self.env.reset()))
                 break
             else:
                 self.state = next_state
@@ -178,8 +165,7 @@ class Worker(object):
 
         for transition in transitions[::-1]:
             reward = transition.reward + self.discount_factor * reward
-            # TODO(jalex): Add value prediction at last timestep if sequence not done
-            # TODO(jalex): Experiment with bootstrapping (lower var but introduce some bias) or GAE
+            # TODO(jalex): Experiment with GAE to reduce var
             policy_target = (reward - self._value_net_predict(transition.state, sess))
             # Accumulate updates
             states.append(transition.state)

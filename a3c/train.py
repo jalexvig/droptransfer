@@ -4,25 +4,16 @@ import os
 import shutil
 import sys
 import threading
-from inspect import getsourcefile
 
 import gym
 import tensorflow as tf
 
-current_path = os.path.dirname(os.path.abspath(getsourcefile(lambda: 0)))
-import_path = os.path.abspath(os.path.join(current_path, ".."))
+from a3c import utils
+from a3c.estimators import ValueEstimator, PolicyEstimator
+from a3c.policy_monitor import PolicyMonitor
+from a3c.worker import Worker
 
-if import_path not in sys.path:
-    sys.path.append(import_path)
-
-from lib.atari import helpers as atari_helpers
-from estimators import ValueEstimator, PolicyEstimator
-from policy_monitor import PolicyMonitor
-from worker import Worker
-
-dpath_model_default = os.path.join(import_path, 'saved')
-
-tf.flags.DEFINE_string("model_dir", dpath_model_default, "Directory to write Tensorboard summaries and videos to.")
+tf.flags.DEFINE_string("model_dir", './saved', "Directory to write Tensorboard summaries and videos to.")
 tf.flags.DEFINE_string("env", "Breakout-v0", "Name of gym Atari environment, e.g. Breakout-v0")
 tf.flags.DEFINE_integer("t_max", 5, "Number of steps before performing an update")
 tf.flags.DEFINE_integer("max_global_steps", None,
@@ -39,11 +30,11 @@ FLAGS(sys.argv)
 
 
 def make_env(wrap=True):
-    env = gym.envs.make(FLAGS.env)
+    env = gym.make(FLAGS.env)
     # remove the timelimitwrapper
     env = env.env
     if wrap:
-        env = atari_helpers.AtariEnvWrapper(env)
+        env = utils.AtariEnvWrapper(env)
     return env
 
 
@@ -58,9 +49,7 @@ env_.close()
 # Set the number of workers
 NUM_WORKERS = FLAGS.parallelism if FLAGS.parallelism else multiprocessing.cpu_count()
 
-MODEL_DIR = FLAGS.model_dir
-run_name = '_'.join([FLAGS.run_name, FLAGS.env, str(FLAGS.keep_prob)])
-MODEL_DIR = os.path.join(MODEL_DIR, run_name)
+MODEL_DIR = os.path.join(FLAGS.model_dir, '_'.join([FLAGS.run_name, FLAGS.env, str(FLAGS.keep_prob)]))
 CHECKPOINT_DIR = os.path.join(MODEL_DIR, "checkpoints")
 
 # Optionally empty model directory

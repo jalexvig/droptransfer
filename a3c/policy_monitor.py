@@ -1,23 +1,13 @@
 import os
-import sys
 import time
-from inspect import getsourcefile
 
 import numpy as np
 import tensorflow as tf
-
-current_path = os.path.dirname(os.path.abspath(getsourcefile(lambda: 0)))
-import_path = os.path.abspath(os.path.join(current_path, "../.."))
-
-if import_path not in sys.path:
-    sys.path.append(import_path)
-
 from gym.wrappers import Monitor
 
-from lib.atari.state_processor import StateProcessor
-from lib.atari import helpers as atari_helpers
-from estimators import PolicyEstimator
-from worker import make_copy_params_op
+from a3c import utils
+from a3c.estimators import PolicyEstimator
+from a3c.worker import make_copy_params_op
 
 
 class PolicyMonitor(object):
@@ -40,7 +30,6 @@ class PolicyMonitor(object):
         self.global_policy_net = policy_net
         self.summary_writer = summary_writer
         self.saver = saver
-        self.sp = StateProcessor()
 
         self.checkpoint_path = os.path.abspath(os.path.join(summary_writer.get_logdir(), "../checkpoints/model"))
 
@@ -70,14 +59,14 @@ class PolicyMonitor(object):
 
             # Run an episode
             done = False
-            state = atari_helpers.atari_make_initial_state(self.sp.process(self.env.reset()))
+            state = utils.atari_make_initial_state(utils.process_state(self.env.reset()))
             total_reward = 0.0
             episode_length = 0
             while not done:
                 action_probs = self._policy_net_predict(state, sess)
                 action = np.random.choice(np.arange(len(action_probs)), p=action_probs)
                 next_state, reward, done, _ = self.env.step(action)
-                next_state = atari_helpers.atari_make_next_state(state, self.sp.process(next_state))
+                next_state = utils.atari_make_next_state(state, utils.process_state(next_state))
                 total_reward += reward
                 episode_length += 1
                 state = next_state
