@@ -65,8 +65,11 @@ class PolicyEstimator(object):
         X = tf.to_float(self.states) / 255.0
         batch_size = tf.shape(self.states)[0]
 
-        with tf.variable_scope("policy_net"):
+        # Graph shared with Value Net
+        with tf.variable_scope("shared", reuse=reuse):
             fc1 = build_shared_network(X, add_summaries=(not reuse))
+
+        with tf.variable_scope("policy_net"):
             self.logits = tf.contrib.layers.fully_connected(fc1, num_outputs, activation_fn=None)
             self.probs = tf.nn.softmax(self.logits) + 1e-8
 
@@ -125,8 +128,11 @@ class ValueEstimator(object):
 
         X = tf.to_float(self.states) / 255.0
 
-        with tf.variable_scope("value_net"):
+        # Graph shared with Value Net
+        with tf.variable_scope("shared", reuse=reuse):
             fc1 = build_shared_network(X, add_summaries=(not reuse))
+
+        with tf.variable_scope("value_net"):
             self.logits = tf.contrib.layers.fully_connected(
                 inputs=fc1,
                 num_outputs=1,
