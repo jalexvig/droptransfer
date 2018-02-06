@@ -22,12 +22,10 @@ def process_state(state, trailing_dimension=False):
 
     state_cropped = state_resized[18:102]
 
-    state_rescaled = state_cropped.astype(np.float32) / 255
-
     if trailing_dimension:
-        state_rescaled = state_rescaled[:, :, None]
+        state_cropped = state_cropped[:, :, None]
 
-    return state_rescaled
+    return state_cropped
 
 
 class AtariEnvWrapper(Wrapper):
