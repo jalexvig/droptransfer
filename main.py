@@ -1,7 +1,7 @@
+import argparse
+import multiprocessing
 import os
 import shutil
-
-import argparse
 
 from droptransfer import a3c, CONFIG
 from droptransfer.utils import make_env
@@ -21,7 +21,7 @@ def parse_flags():
     parser.add_argument("--reset", action='store_true',
                         help="If set, delete the existing model directory and start training from scratch.")
     parser.add_argument("--num_workers", help="Number of threads to run. If not set we run [num_cpu_cores] threads.",
-                        type=int)
+                        type=int, default=multiprocessing.cpu_count())
     parser.add_argument("--keep_prob", default=1.0, help="Probability to keep elements in dropout layers.", type=float)
     parser.add_argument("--run_name", default="default", help="Name of run.")
     parser.add_argument("--init_from", help="Directory to initialize model from.")
@@ -38,11 +38,6 @@ def proc_flags():
         env_ = make_env(CONFIG.env)
         CONFIG.valid_actions = list(range(env_.action_space.n))
         env_.close()
-
-    # Set the number of workers
-    if not CONFIG.num_workers:
-        import multiprocessing
-        CONFIG.num_workers = multiprocessing.cpu_count()
 
     run_name_components = [CONFIG.run_name,
                            CONFIG.env,
