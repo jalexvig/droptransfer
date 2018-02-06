@@ -1,4 +1,5 @@
 import cv2
+import gym
 import numpy as np
 from gym import Wrapper
 
@@ -12,7 +13,7 @@ def process_state(state, trailing_dimension=False):
         trailing_dimension: If true, add a final channel dimension of size 1.
 
     Returns:
-        A processed [84, 84, 1] state representing grayscale values.
+        A processed [84, 84[, 1]] state representing grayscale values.
     """
 
     state_gray = cv2.cvtColor(state, cv2.COLOR_RGB2GRAY)
@@ -66,3 +67,12 @@ def atari_make_initial_state(state):
 def atari_make_next_state(state, next_state):
     # Keeping track of last four frames. Each time head frame is bumped off.
     return np.append(state[:, :, 1:], np.expand_dims(next_state, 2), axis=2)
+
+
+def make_env(env_name, wrap=True):
+    env = gym.make(env_name)
+    # remove the timelimitwrapper
+    env = env.env
+    if wrap:
+        env = AtariEnvWrapper(env)
+    return env

@@ -5,9 +5,9 @@ import numpy as np
 import tensorflow as tf
 from gym.wrappers import Monitor
 
-from a3c import utils
-from a3c.estimators import PolicyEstimator
-from a3c.worker import make_copy_params_op
+from droptransfer import utils
+from droptransfer.a3c.estimators import PolicyEstimator
+from droptransfer.a3c.worker import make_copy_params_op
 
 
 class PolicyMonitor(object):

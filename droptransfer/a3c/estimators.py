@@ -1,5 +1,7 @@
 import tensorflow as tf
 
+from droptransfer import CONFIG
+
 
 def build_shared_network(X, add_summaries=False):
     """
@@ -16,10 +18,10 @@ def build_shared_network(X, add_summaries=False):
     # Three convolutional layers
     conv1 = tf.contrib.layers.conv2d(
         X, 16, 8, 4, scope="conv1")
-    conv1 = tf.nn.dropout(conv1, tf.flags.FLAGS.keep_prob)
+    conv1 = tf.nn.dropout(conv1, CONFIG.keep_prob)
     conv2 = tf.contrib.layers.conv2d(
         conv1, 32, 4, 2, scope="conv2")
-    conv2 = tf.nn.dropout(conv2, tf.flags.FLAGS.keep_prob)
+    conv2 = tf.nn.dropout(conv2, CONFIG.keep_prob)
 
     # Fully connected layer
     fc1 = tf.contrib.layers.fully_connected(

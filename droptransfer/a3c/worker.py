@@ -4,8 +4,8 @@ import itertools
 import numpy as np
 import tensorflow as tf
 
-from a3c import utils
-from a3c.estimators import ValueEstimator, PolicyEstimator
+from droptransfer import utils
+from droptransfer.a3c.estimators import ValueEstimator, PolicyEstimator
 
 Transition = collections.namedtuple("Transition", ["state", "action", "reward", "next_state", "done"])
 
@@ -65,6 +65,7 @@ class Worker(object):
         self.global_value_net = value_net
         self.global_counter = global_counter
         self.local_counter = itertools.count()
+        next(self.local_counter)
         self.summary_writer = summary_writer
         self.env = env
 
@@ -182,6 +183,7 @@ class Worker(object):
         }
 
         # Train the global estimators using local gradients
+        # The pnet_train_op and vnet_train_op each contribute 1 to the global_step tracked by tensorflow
         global_step, pnet_loss, vnet_loss, _, _, pnet_summaries, vnet_summaries = sess.run([
             self.global_step,
             self.policy_net.loss,
