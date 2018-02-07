@@ -1,4 +1,5 @@
 import argparse
+import json
 import multiprocessing
 import os
 import shutil
@@ -56,9 +57,8 @@ def proc_flags():
     if not os.path.exists(CONFIG.dpath_checkpoint):
         os.makedirs(CONFIG.dpath_checkpoint)
 
-    if CONFIG.init_from:
-        with open(os.path.join(CONFIG.dpath_model, 'init_from.txt'), 'w') as f:
-            f.write(CONFIG.init_from)
+    with open(os.path.join(CONFIG.dpath_model, 'config.txt'), 'w') as f:
+        json.dump(vars(CONFIG), f, indent=4)
 
 
 if __name__ == '__main__':
