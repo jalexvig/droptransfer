@@ -22,7 +22,8 @@ def parse_flags():
                         help="If set, delete the existing model directory and start training from scratch.")
     parser.add_argument("--num_workers", help="Number of threads to run. If not set we run [num_cpu_cores] threads.",
                         type=int, default=multiprocessing.cpu_count())
-    parser.add_argument("--keep_prob", default=1.0, help="Probability to keep elements in dropout layers.", type=float)
+    parser.add_argument("--dropout_keep", default=1.0, help="Probability to keep elements in dropout layers.", type=float)
+    parser.add_argument("--dropconnect_keep", default=1.0, help="Probability to keep elements in dropconnect.", type=float)
     parser.add_argument("--run_name", default="default", help="Name of run.")
     parser.add_argument("--init_from", help="Directory to initialize model from.")
 
@@ -43,7 +44,8 @@ def proc_flags():
                            CONFIG.env,
                            str(CONFIG.max_global_steps),
                            str(bool(CONFIG.init_from)),
-                           str(CONFIG.keep_prob)]
+                           str(CONFIG.dropout_keep),
+                           str(CONFIG.dropconnect_keep)]
     CONFIG.dpath_model = os.path.join(CONFIG.model_dir, '_'.join(run_name_components))
 
     # Optionally empty model directory
