@@ -3,6 +3,8 @@ import gym
 import numpy as np
 from gym import Wrapper
 
+from droptransfer.combine_runs import combine_events
+
 
 def process_state(state, trailing_dimension=False):
     """

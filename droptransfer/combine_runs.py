@@ -6,7 +6,7 @@ import tensorflow as tf
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
 
-def tabulate_events(dpath):
+def _tabulate_events(dpath):
 
     summary_iterators = [EventAccumulator(os.path.join(dpath, dname, 'train')).Reload() for dname in os.listdir(dpath)]
 
@@ -26,7 +26,7 @@ def tabulate_events(dpath):
     return out
 
 
-def write_combined_events(dpath, d_combined, dname='combined'):
+def _write_combined_events(dpath, d_combined, dname='combined'):
 
     fpath = os.path.join(dpath, dname)
     writer = tf.summary.FileWriter(fpath)
@@ -43,6 +43,13 @@ def write_combined_events(dpath, d_combined, dname='combined'):
         writer.flush()
 
 
+def combine_events(dpath):
+
+    d = _tabulate_events(dpath)
+
+    _write_combined_events(dpath, d)
+
+
 if __name__ == '__main__':
 
     import argparse
@@ -53,6 +60,4 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    d = tabulate_events(args.dpath)
-
-    write_combined_events(args.dpath, d)
+    combine_events(args.dpath)

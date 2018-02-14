@@ -27,14 +27,21 @@ def train():
         tf.global_variables_initializer().run()
         total_timesteps = 0
 
-        # Load a previous checkpoint if it exists
-        dpath_load = CONFIG.dpath_checkpoint
+        # Initialize from other run
         if CONFIG.init_from:
-            dpath_load = os.path.join(CONFIG.init_from, str(CONFIG.seed), 'checkpoints')
-        latest_checkpoint = tf.train.latest_checkpoint(dpath_load)
+            latest_checkpoint = tf.train.latest_checkpoint(CONFIG.init_from)
+            if not latest_checkpoint:
+                raise ValueError('Could not initialize from {}'.format(CONFIG.init_from))
+        else:
+            latest_checkpoint = tf.train.latest_checkpoint(CONFIG.dpath_checkpoint)
+
         if latest_checkpoint:
             print("Loading model checkpoint: {}".format(latest_checkpoint))
             saver.restore(sess, latest_checkpoint)
+
+        reset_ops = policy_net.reset_ops + value_net.reset_ops
+
+        sess.run(reset_ops)
 
         for itr in range(CONFIG.n_iter):
 
@@ -88,7 +95,7 @@ def train():
             val_predicted_norm = _normalize(val_predicted, q_n.mean(), q_n.std())
             adv_n = q_n - val_predicted_norm
 
-            if CONFIG.normalize_advantages:
+            if not CONFIG.dont_normalize_advantages:
                 adv_n = _normalize(adv_n)
 
             feed_dict = {

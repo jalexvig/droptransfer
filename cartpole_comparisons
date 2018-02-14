@@ -1,0 +1,4 @@
+dpath=$(python main_non_atari.py --env CartPole-v0 -n 100 -b 1000 -e 5 --run_name orig | tail -1)
+dpath=$(python main_non_atari.py --env CartPole-v0 -n 100 -b 1000 -e 5 --run_name origfinetune --init_from $dpath --modify_env force_mag float 20.0 length float 3.0 | tail -1)
+dpath=$(python main_non_atari.py --env CartPole-v0 -n 100 -b 1000 -e 5 --run_name dropout --dropout_keep 0.9 | tail -1)
+dpath=$(python main_non_atari.py --env CartPole-v0 -n 100 -b 1000 -e 5 --run_name dropoutreset --permanent_keep 0.9 --init_from $dpath --modify_env force_mag float 20.0 length float 3.0 | tail -1)

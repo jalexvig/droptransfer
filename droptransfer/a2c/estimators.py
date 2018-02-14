@@ -1,21 +1,24 @@
 import tensorflow as tf
 
+from droptransfer import CONFIG
+
 
 def build_mlp(
     input_placeholder,
     output_size,
-    n_layers=2,
-    size=64,
     activation=tf.tanh,
     output_activation=None
 ):
 
     l = input_placeholder
 
-    for i in range(n_layers):
-        l = tf.layers.dense(l, size, activation=activation, name='hidden_layer%i' % i)
+    for i, size in enumerate(CONFIG.num_units):
+        with tf.variable_scope('hidden%i' % i):
+            l = tf.layers.dense(l, size, activation=activation)
+            l = tf.nn.dropout(l, CONFIG.dropout_keep)
 
-    output_layer = tf.layers.dense(l, output_size, activation=output_activation, name='output_layer')
+    with tf.variable_scope('output'):
+        output_layer = tf.layers.dense(l, output_size, activation=output_activation)
 
     return output_layer
 
@@ -26,6 +29,23 @@ class Estimator(object):
 
         self.observations = tf.placeholder(shape=[None, obs_dim], name="observations", dtype=tf.float32)
         self.targets = tf.placeholder(shape=[None], name='targets', dtype=tf.float32)
+
+    def get_reset_ops(self):
+
+        # TODO(jalex): Experiment with resetting biases
+
+        reset_ops = []
+
+        for i in range(len(CONFIG.num_units)):
+            with tf.variable_scope('hidden%i' % i, reuse=True):
+                weights = tf.get_variable('dense/kernel')
+
+            mask_reset = tf.cast(tf.random_uniform(weights.shape) < CONFIG.permanent_keep, weights.dtype)
+
+            # TODO(jalex): Use initializer? Right now just zeroing them out
+            reset_ops.append(tf.assign(weights, weights * mask_reset))
+
+        return reset_ops
 
 
 class PolicyEstimator(Estimator):
@@ -46,6 +66,8 @@ class PolicyEstimator(Estimator):
             self.loss = -tf.reduce_mean(tf.multiply(sampled_logprobs, self.targets), name='loss')
             self.update_op = tf.train.AdamOptimizer().minimize(self.loss)
 
+            self.reset_ops = self.get_reset_ops()
+
             tf.summary.scalar('loss', self.loss)
 
 
@@ -62,5 +84,7 @@ class ValueEstimator(Estimator):
             self.loss = tf.nn.l2_loss(self.predicted_values - self.targets)
 
             self.update_op = tf.train.AdamOptimizer().minimize(self.loss)
+
+            self.reset_ops = self.get_reset_ops()
 
             tf.summary.scalar('loss', self.loss)
